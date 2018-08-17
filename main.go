@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"time"
 
@@ -22,12 +23,15 @@ type config struct {
 	maxOffset   float64
 	alpha       float64
 	theme       string
+	exponential bool
 }
 
 func main() {
+
 	var numCols, numRows, width, height, padding int
 	var strokeWidth, maxRotation, maxOffset, alpha float64
 	var theme string
+	var exponential bool
 	flag.IntVar(&numCols, "numCols", 12, "number of columns in the image")
 	flag.IntVar(&numRows, "numRows", 24, "number of rows in the image")
 	flag.IntVar(&width, "width", 4096, "width of the image in pixels")
@@ -38,6 +42,7 @@ func main() {
 	flag.Float64Var(&maxOffset, "maxOffset", 1, "maximum offset as a fraction of block size")
 	flag.Float64Var(&alpha, "alpha", 0.2, "alpha value for boxes")
 	flag.StringVar(&theme, "theme", "mono", "colour theme to use")
+	flag.BoolVar(&exponential, "exponential", false, "use exponential scale for determining block offset")
 	flag.Parse()
 
 	cfg := config{
@@ -51,16 +56,16 @@ func main() {
 		maxOffset:   maxOffset,
 		alpha:       alpha,
 		theme:       theme,
+		exponential: exponential,
 	}
 
-	generateImage(cfg, "eveningNight", 0.2)
+	name := fmt.Sprintf("img/%s_%dx%d_%03.f.png", cfg.theme, cfg.width, cfg.height, cfg.alpha*100)
+	generateImage(cfg, name)
 }
 
-func generateImage(cfg config, theme string, fgAlpha float64) {
+func generateImage(cfg config, name string) {
 
 	rand.Seed(time.Now().UnixNano())
-
-	name := fmt.Sprintf("%s_%dx%d_%03.f.png", theme, cfg.width, cfg.height, fgAlpha*100)
 
 	dc := gg.NewContext(cfg.width, cfg.height)
 
@@ -92,8 +97,17 @@ func generateImage(cfg config, theme string, fgAlpha float64) {
 			midX := float64(xCoord + ((sqSize - 2*cfg.padding) / 2.0))
 			midY := float64(yCoord + ((sqSize - 2*cfg.padding) / 2.0))
 
-			// rotate each square by an random amount up to a pre-defined max
+			// calculate an percentage based on the row we are on
 			offsetPct := float64(y) / float64(cfg.numRows)
+
+			if cfg.exponential {
+				offsetPct = 1 - (math.Log(float64(cfg.numRows-y)) / math.Log(float64(cfg.numRows)))
+				if math.IsInf(offsetPct, 1) {
+					offsetPct = 1.0
+				}
+			}
+
+			// rotate each square by an random amount up to a pre-defined max
 			rotDeg := offsetPct * (rand.Float64()*cfg.maxRotation*2.0 - cfg.maxRotation)
 			dc.RotateAbout(gg.Radians(rotDeg), midX, midY)
 
@@ -134,7 +148,7 @@ func generateImage(cfg config, theme string, fgAlpha float64) {
 	dc.SetRGBA(0.5, 0.5, 0.5, 0.5)
 	dc.DrawString(caption, sPosX, sPosY)
 
-	err = dc.SavePNG("img/" + name)
+	err = dc.SavePNG(name)
 	if err != nil {
 		log.Fatal("unable to load font:", err)
 	}
