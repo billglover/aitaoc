@@ -142,6 +142,7 @@ func generateImage(cfg config, name string) {
 	caption := fmt.Sprintf("%x // @BillGlover", hSum.Sum(nil))
 
 	w, h := dc.MeasureString(caption)
+	imgOffsetX = (cfg.width - cfg.numCols*sqSize) / 2
 	sPosX := float64(cfg.numCols*sqSize) + float64(imgOffsetX) - w
 	sPosY := (float64(cfg.numRows)+2.5)*float64(sqSize) - h
 
