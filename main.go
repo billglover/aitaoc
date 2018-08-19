@@ -24,6 +24,7 @@ type config struct {
 	alpha       float64
 	theme       string
 	exponential bool
+	sign        bool
 }
 
 func main() {
@@ -31,7 +32,7 @@ func main() {
 	var numCols, numRows, width, height, padding int
 	var strokeWidth, maxRotation, maxOffset, alpha float64
 	var theme string
-	var exponential bool
+	var exponential, sign bool
 	flag.IntVar(&numCols, "numCols", 12, "number of columns in the image")
 	flag.IntVar(&numRows, "numRows", 24, "number of rows in the image")
 	flag.IntVar(&width, "width", 4096, "width of the image in pixels")
@@ -43,6 +44,7 @@ func main() {
 	flag.Float64Var(&alpha, "alpha", 0.2, "alpha value for boxes")
 	flag.StringVar(&theme, "theme", "mono", "colour theme to use")
 	flag.BoolVar(&exponential, "exponential", false, "use exponential scale for determining block offset")
+	flag.BoolVar(&sign, "sign", true, "include a signature below the image")
 	flag.Parse()
 
 	cfg := config{
@@ -57,6 +59,7 @@ func main() {
 		alpha:       alpha,
 		theme:       theme,
 		exponential: exponential,
+		sign:        sign,
 	}
 
 	name := fmt.Sprintf("img/%s_%dx%d_%03.f.png", cfg.theme, cfg.width, cfg.height, cfg.alpha*100)
@@ -132,24 +135,26 @@ func generateImage(cfg config, name string) {
 		}
 	}
 
-	err := dc.LoadFontFace("Go-Mono.ttf", 18.0)
-	if err != nil {
-		log.Fatal("unable to load font:", err)
+	if cfg.sign {
+		err := dc.LoadFontFace("Go-Mono.ttf", 18.0)
+		if err != nil {
+			log.Fatal("unable to load font:", err)
+		}
+
+		hSum := sha256.New()
+		dc.EncodePNG(hSum)
+		caption := fmt.Sprintf("%x // @BillGlover", hSum.Sum(nil))
+
+		w, h := dc.MeasureString(caption)
+		imgOffsetX = (cfg.width - cfg.numCols*sqSize) / 2
+		sPosX := float64(cfg.numCols*sqSize) + float64(imgOffsetX) - w
+		sPosY := (float64(cfg.numRows)+2.5)*float64(sqSize) - h
+
+		dc.SetRGBA(0.5, 0.5, 0.5, 0.5)
+		dc.DrawString(caption, sPosX, sPosY)
 	}
 
-	hSum := sha256.New()
-	dc.EncodePNG(hSum)
-	caption := fmt.Sprintf("%x // @BillGlover", hSum.Sum(nil))
-
-	w, h := dc.MeasureString(caption)
-	imgOffsetX = (cfg.width - cfg.numCols*sqSize) / 2
-	sPosX := float64(cfg.numCols*sqSize) + float64(imgOffsetX) - w
-	sPosY := (float64(cfg.numRows)+2.5)*float64(sqSize) - h
-
-	dc.SetRGBA(0.5, 0.5, 0.5, 0.5)
-	dc.DrawString(caption, sPosX, sPosY)
-
-	err = dc.SavePNG(name)
+	err := dc.SavePNG(name)
 	if err != nil {
 		log.Fatal("unable to load font:", err)
 	}
