@@ -84,8 +84,8 @@ func generateImage(cfg config, name string) {
 	// calculate offset to ensure horizontal centring
 	imgOffsetX := (cfg.width - (cfg.numCols+2)*sqSize) / 2
 
-	// add a white background
-	dc.SetRGBA(1, 1, 1, 1)
+	// add a black background
+	dc.SetRGBA(0, 0, 0, 1)
 	dc.DrawRectangle(0, 0, float64(cfg.width), float64(cfg.height))
 	dc.Fill()
 
